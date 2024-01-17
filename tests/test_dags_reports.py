@@ -1,4 +1,6 @@
 """Test for Airflow DAGs."""
+import json
+import os
 from datetime import datetime
 
 import pytest
@@ -9,10 +11,26 @@ from airflow.utils import timezone
 from airflow.utils.state import DagRunState, TaskInstanceState
 from airflow.utils.types import DagRunType
 
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
+@pytest.fixture(scope="session")
+def variables():
+    """Load Airflow variables."""
+    with open(os.path.join(CURRENT_DIR, "../composer/variables.json")) as f:
+        variables = json.load(f)
+        for key, value in variables.items():
+            Variable.set(key, json.dumps(value))
+
 
 def check_params(params, **kwargs):
     """Check params are merged correctly."""
     kwargs["ti"].xcom_push("query", f'select * from {params["report_prefix"]}{params["table_name"]}')
+
+
+@pytest.mark.usefixtures("variables")
+def test_vars():
+    assert Variable.get("REPORTS") == '{"FOO": "bar"}'
 
 
 @pytest.mark.parametrize(
